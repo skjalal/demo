@@ -10,7 +10,7 @@ public class AjaxUtils {
 	private static String ajaxResponse = "text/html";
 	private static String jsonResponse = "application/json";
 	private static Logger log = Logger.getLogger(AjaxUtils.class);
-
+	//https://datatables.net/extensions/fixedcolumns/examples/styling/bootstrap.html
 	private AjaxUtils() {
 
 	}
