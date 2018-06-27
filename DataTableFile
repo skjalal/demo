@@ -1,0 +1,814 @@
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1" pageEncoding="ISO-8859-1"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href='images/favicon.ico' rel='shortcut icon' />
+<link href="css_bootstrap/bootstrapNew.css?v=7.4.0.5" rel="stylesheet" /> 
+<link href="css_bootstrap/ssstyleNew.css?v=7.4.0.30" rel="stylesheet" />
+<link href="css_bootstrap/developers-styles-bootstrap.css?v=14.05.2018" rel="stylesheet" />
+<link href="css_bootstrap/font-awesome.min.css?v=7.7.0.8" rel="stylesheet" />
+<link href='javascript_bootstrap/DataTables-1.10.16/css/dataTables.bootstrap.css' rel='stylesheet' />
+<script src="javascript_bootstrap/jquery.min.js?v=7.3.0.2"></script>
+<script src="javascript_bootstrap/fullcalendar/js/bootstrap.min.js?v=7.3.1.2"></script>
+<script type="text/javascript" src="javascript/hr-script-bootstrap.js"></script>
+<script type="text/javascript" src="javascript_bootstrap/DataTables-1.10.16/js/jquery.dataTables.js?v=May2801010209fasdf"></script>
+<script type="text/javascript" src="javascript_bootstrap/DataTables-1.10.16/js/dataTables.bootstrap.js"></script>
+<script type="text/javascript" src="javascript_bootstrap/DataTables-1.10.16/js/fnReloadAjax.js" ></script>
+<script type="text/javascript" src="javascript_bootstrap/DataTables-1.10.16/js/dataTables.fixedColumns.js" ></script> 
+<script type="text/javascript" src="javascript/chosen.jquery.js?v=7.3.0.2"></script>
+<style type="text/css">
+	.classDataTable { background-color: #fcf8e3; }
+	table.dataTable thead .sorting_asc:after,table.dataTable thead .sorting_desc:after,table.dataTable thead .sorting:after {
+    	top: 8px !important;
+	}
+	table.dataTable {
+	     border-collapse: collapse !important;
+	}
+	.DTFC_LeftBodyLiner table.dataTable  tr   th, .dataTables_scrollBody table.dataTable  tr   th{
+		padding: 1px 11px 1px 10px !important;
+	}
+	.DTFC_LeftBodyLiner{
+	    border-right: 18px solid #DCDCDC;
+	}
+	.DTFC_LeftHeadWrapper {
+		border-right: 1px solid #DCDCDC;
+	}
+	table.dataTable {
+	    clear: both;
+	    margin-top: 0px !important;
+	    margin-bottom: 0px !important;
+	    background-color: white;
+	    margin-top: -3px !important;
+    }
+    .dataTables_scrollHeadInner table, .dataTables_scrollBody table {
+    	min-width: 1400px !important;
+    }
+    .DTFC_LeftBodyLiner{
+    	overflow: hidden !important;
+    }
+   .dataTables_scrollBody table tr th, .DTFC_LeftBodyLiner table tr th{
+	    background-color: white !important;
+	    border:none !important;
+    }
+    div.dataTables_scrollBody > table {
+    	margin-top: -3px !important;
+    }
+    .dataTables_scrollBody table tbody tr td, .DTFC_LeftBodyLiner table tbody tr td {
+    	height: 60px !important;
+    }
+    div.dataTables_wrapper div.dataTables_processing {
+    	top: 200px;
+    	background: transparent;
+    }
+    .week, .fifteendays, .month {
+	    background: #999 !important;
+	    color: #fff !important;
+	    box-shadow: none !important;
+	    outline: 0 none;
+	    border-color: #999 !important;
+	}
+    .tooltip.fade.top.in{
+		background-color: initial !important;
+    	border: 1px #CCCCCC !important;
+	}
+	.tooltip-inner {
+   	 	max-width: none;
+     	white-space: nowrap;
+    }
+</style>
+<script type="text/javascript">
+	var table;
+	$(document).ready(function() {
+		$("body").tooltip({ selector: '[data-toggle=tooltip]' });
+		$('#department').chosen();
+		$('#shiftTypeSearch').chosen();
+		$('#15daysBtnId').click(function() {			
+			$('#15daysBtnId').addClass('fifteendays');
+			$('#weekBtnId').removeClass('week');
+			$('#monthBtnId').removeClass('month');
+			nextOrPrevious('');
+		});
+		$('#monthBtnId').click(function() {			
+			$('#15daysBtnId').removeClass('fifteendays');
+			$('#weekBtnId').removeClass('week');
+			$('#monthBtnId').addClass('month');
+			nextOrPrevious('');
+		});
+		$('#weekBtnId').click(function() {			
+			$('#15daysBtnId').removeClass('fifteendays');
+			$('#weekBtnId').addClass('week');
+			$('#monthBtnId').removeClass('month');
+			nextOrPrevious('');
+		});
+		var fromDate = $('#fromDateSpan').html().split(' ')[1];
+		var toDate = $('#toDateSpan').html().split(' ')[1];
+		var fromDateString;
+		var toDateString;
+		var currentDateString;
+		$.ajax({
+			url : 'timeMgmtShiftType_validateDatesFormat.action?format="MMM-dd-yyyy"',
+			data : {'fromDate' : fromDate, 'toDate' : toDate},
+			cache : false,
+			async :false,
+			success: function(response){
+				fromDateString = response.fromDate;
+				toDateString = response.toDate;
+				currentDateString = response.currentDate;
+			}
+		});
+		var fromDateValue = new Date(fromDateString);
+		var toDateValue = new Date(toDateString);
+		var currentDateValue = new Date(currentDateString);
+		if(fromDateValue <= currentDateValue && toDateValue >= currentDateValue) {
+			currentDateTd = $('#dayId_'+currentDateValue.getDate()).index();
+			if(currentDateTd == -1) {
+				currentDateTd = '';
+			}
+		}else{
+			currentDateTd ="";
+		}
+		var unitPageLimit = $('#tableMaxLength').val();
+		var alengths = [10, 25, 50, 100];
+		if(unitPageLimit == '10' || unitPageLimit == '25' || unitPageLimit == '50' || unitPageLimit == '100') {
+			
+		} else {
+			alengths.unshift(unitPageLimit);
+		}
+		table = $('#calendarTable').DataTable({
+			"processing": true,
+	        "serverSide": true,
+			"ordering": false,
+	        "info":  true,
+	        "searching": true,
+	        "scrollX": true,
+	        "scrollY": 500,
+	        "scrollCollapse": true,
+	        "autoWidth": true,
+	        "pagingType": "full_numbers",
+	        "lengthMenu": alengths,
+	        "ajax": {
+	        	"url" : "timeMgmtShiftType_viewTeamCalendarData.action",
+	        	"type": 'POST',
+	            "datatype": 'json',
+	        	"data" : function(d) {
+        			d.departmentId = $('#department').val()+"";
+        			if(d.departmentId == '') {
+        				d.departmentId = '-1'
+        			}
+        			d.shiftTypeSearchId = $('#shiftTypeSearch').val()+"";
+        			if(d.shiftTypeSearchId == '') {
+        				d.shiftTypeSearchId = '-1';
+        			}
+	        		d.from = $('#fromDateSpan').html();
+	        		d.to = $('#toDateSpan').html();
+	        		d.searchFilter = d.search.value;
+	        	}
+	        },
+	        "language" : {
+	        	"processing" : "<img src='images/loading_confrm.gif'>"
+	        },
+	        "dom":"<'row'<'col-xs-12  col-sm-4 col-md-4'l><'col-xs-12  col-sm-4 col-md-4'f><'col-xs-12  col-sm-4 col-md-4'<'pull-right blackImgCls'B>>r>t<'col-xs-12  col-sm-6 col-md-6'i><'col-xs-12  col-sm-4 col-md-6'p>",
+	        "columnDefs" : [{ className: "classDataTable", "targets": [ currentDateTd ] }],
+	        "initComplete": function(settings, json) {
+	        	$('#calendarTable_length').css('margin-left','10px');
+	        },
+			"drawCallback" : function(settings) {
+	        	
+	        },
+	        "fixedColumns" : true
+		});
+		$('#showEmployee').click(function() {
+			table.ajax.reload();
+		});
+	});
+	function nextOrPrevious(type) {
+		var btnType = '';
+		if($('button').hasClass('week')) {
+			btnType = 'week';
+		} else if($('button').hasClass('fifteendays')) {
+			btnType = 'fifteendays';
+		} else if($('button').hasClass('month')) {
+			btnType = 'month';
+		}
+		$('#btnTypeId').val(btnType);
+		$('#nextOrPreviousId').val(type);
+		$('#from').val($('#fromDateSpan').html());
+		$('#to').val($('#toDateSpan').html());
+		$('#shiftCalendarForm').submit();
+	}
+</script>
+<title>Employee Shift Calendar</title>
+</head>
+<body style="background-color: white;">
+	<div class="container-fluid">
+		<div class="container-bgwrapper">
+			<div class="row">
+				<div class="col-md-4 col-sm-4 col-xs-12 pull-left">
+					<a href="#"><img src="unitLogo_logoDisplay.action" class="logo"></a>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-12 col-md-12 col-xs-12">
+					<div class="mainhead" >
+						<span class="mhead">Employee Full Shift Calendar</span>
+					</div>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-12 col-md-12 col-xs-12">
+					<div class="row">
+						<div class="col-sm-6 col-xs-12 col-md-6">
+							<div class="row">
+								<div class="col-sm-4">
+									<label class="control-label">Department</label>
+								</div>
+								<div class="col-sm-8">
+									<s:select name="department" id="department" cssClass="form-control"	listKey="departmentId" listValue="name" data-placeholder="All" accesskey="Select" list="#request.departments" multiple="true"></s:select>
+								</div>
+							</div>
+						</div>
+						<div class="col-sm-6 col-xs-12 col-md-6">
+							<div class="row">
+								<div class="col-sm-4">
+									<label class="control-label">Shift</label>
+								</div>
+								<div class="col-sm-8">
+									<s:select id="shiftTypeSearch" name="shiftTypeSearch" cssClass="form-control" accesskey="Select" listKey="shiftTypeId" multiple="true" listValue="name" data-placeholder="All" list="#request.shiftUpdatedList"></s:select>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-sm-12 col-xs-12 col-md-6">&nbsp;</div>
+						<div class="col-sm-12 col-xs-12 col-md-6 buttons">
+							<button type="button" class="btn btn-sutisoft" id="showEmployee">Show	Employees</button>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-sm-12 col-xs-12 col-md-4">
+							<div class="row spl-topmrg13">
+								<a onclick="nextOrPrevious('prev');"><i class="fa fa-backward" aria-hidden="true"></i></a>
+								<span id="fromDateSpan"><s:property value="%{#request.fromDate}"/></span> to 
+								<span id="toDateSpan"><s:property value="%{#request.toDate}"/></span>
+								<a onclick="nextOrPrevious('next');"><i class="fa fa-forward" aria-hidden="true"></i></a>
+							</div>
+						</div>
+						<div class="col-sm-12 col-xs-12 col-md-8">
+							<div class="row spl-botmrg8 buttons">
+								<div class="btn-group" role="group" aria-label="Basic example">
+									<button type="button" class="btn btn-sutisoft <s:property value='#request.weekBtn' />" id="weekBtnId">Week</button>
+									<button type="button" class="btn btn-sutisoft <s:property value='#request.fifteendaysBtn' />" id="15daysBtnId">15 Days</button>
+									<button type="button" class="btn btn-sutisoft <s:property value='#request.monthBtn' />" id="monthBtnId">Month</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="table-responsive list" style="overflow: hidden !important;">		
+				<table class="table table-bordered-all display" id="calendarTable" style="width: 100%">
+					<thead>
+						<tr>
+							<s:iterator value='#request.dateList' var="d">
+								<s:if test='#d.split("##")[1] != null && #d.split("##")[1] != ""'>
+									<th id="dayId_<s:property value='#d.split("##")[0].split("/")[1]' />" style="text-align: center; min-width: 238px !important; height: 45px">
+										<s:property value='#d.split("##")[0]' />&nbsp;
+										<img src="images_hvm/holiday-tiemsheet-icon.png" title="<s:property value='#d.split("##")[1]' />">
+									</th>
+								</s:if>
+								<s:else>							
+									<th id="dayId_<s:property value='#d.split("/")[1]' />" style="text-align: center; min-width: 238px !important; height: 45px"><s:property value='d' /></th>								
+								</s:else>
+							</s:iterator>
+						</tr>
+					</thead>
+				</table>
+			</div>
+			<div class="row">
+    			<div class="col-md-6 col-md-offset-6">
+   					<div class="copyright">© 2018 SutiSoft, Inc. · All Rights Reserved · v8.0</div>
+    			</div>
+  			</div>
+		</div>
+	</div>
+	<s:form name="shiftCalendarForm" id="shiftCalendarForm" action="timeMgmtShiftType_viewTeamCalendar.action" method="post" theme="simple">
+		<s:hidden name="tableMaxLength" id="tableMaxLength" value="%{#session.unitPageLimit}"></s:hidden>
+		<s:hidden id="btnTypeId" name="btnTypeId" />
+		<s:hidden id="nextOrPreviousId" name="nextOrPreviousId" />
+		<s:hidden id="from" name="from" />
+		<s:hidden id="to" name="to" />
+	</s:form>
+</body>
+</html>
+
+public String viewTeamCalendarData() {
+		logger.info("Enter into viewTeamCalendarData");
+		PrintWriter out = null;
+		SimpleDateFormat dateFormat=new SimpleDateFormat("EEEE MMM-dd-yyyy");
+		try {
+			out = response.getWriter();
+			response.setContentType("application/json");
+			Integer unitId = (Integer) session.getAttribute("loginUnitId");
+			String from = request.getParameter("from");
+			String to = request.getParameter("to");
+			String departmemtId = request.getParameter("departmentId") == null || request.getParameter("departmentId").equalsIgnoreCase("null") ? "-1" : request.getParameter("departmentId");
+			String shiftId = request.getParameter("shiftTypeSearchId") == null || request.getParameter("shiftTypeSearchId").equalsIgnoreCase("null") ? "-1" : request.getParameter("shiftTypeSearchId");
+			int start = Integer.parseInt(request.getParameter("start"));
+			int amount = Integer.parseInt(request.getParameter("length"));
+			String draw = request.getParameter("draw");
+			String search = request.getParameter("searchFilter") == null ? "" : request.getParameter("searchFilter");
+			search = search.trim();
+			Date fromDate = null;
+			Date toDate = null;
+			if(from != null && to != null) {
+				fromDate = dateFormat.parse(from);
+				toDate = dateFormat.parse(to);
+			}
+			List<Date> dateList = new ArrayList<Date>();
+			long interval = 24*1000 * 60 * 60;
+			long endTime = toDate.getTime() ;
+			long curTime = fromDate.getTime();
+			while (curTime <= endTime) {
+				dateList.add(new Date(curTime));
+				curTime += interval;
+			}
+			JSONObject result = new TimeShiftTypeSearch().getEmployeeShiftCalendarRecords(unitId, departmemtId, shiftId, dateList, start, amount, search, draw);
+			out.print(result);
+		} catch(Exception e) {
+			logger.error(e);
+		} finally {
+			out.flush();
+			out.close();
+		}
+		logger.info("End of viewTeamCalendarData");
+		return null;
+	}
+  
+  public JSONObject getEmployeeShiftCalendarRecords(Integer unitId,String departmentId, String shiftTypeId, List<Date> dates, int start, int amount, String search, String draw) {
+		logger.info("Enter into getEmployeeShiftCalendarRecords()");
+	JSONObject result = new JSONObject();
+	JSONArray array = new JSONArray();
+	Session session = null;
+	Calendar cal = Calendar.getInstance();
+	List<Employee> employees = null;
+	SimpleDateFormat sHoursFormat = null;
+	SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+	try {
+		Feedback.doEmptyTx();
+		session = HibernateSessionFactory.getSession();
+		StringBuffer buffer = new StringBuffer();
+		String unitHoursFormat = (String) session.createQuery("select timesheetsTimeFormat from Unit where unitId = "+unitId).uniqueResult();
+		if(unitHoursFormat != null && unitHoursFormat.equalsIgnoreCase("12hrsFormat")) {
+			sHoursFormat = new SimpleDateFormat("hh:mm a");
+		} else {
+			sHoursFormat = new SimpleDateFormat("HH:mm");
+		}
+		buffer.delete(0, buffer.length());
+		String dateValues = "";
+		for(Date date : dates) {
+			dateValues = dateValues + "'"+sdf.format(date)+"',";
+		}
+		dateValues = dateValues.substring(0, dateValues.length() - 1);
+		buffer.append(" from ShiftAssignedDays where shiftAssign.unit.unitId = "+unitId+" and assignedShiftStatus.statusId in (23,3) and shiftDate in ("+dateValues+")");
+		if(!shiftTypeId.equalsIgnoreCase("-1")) {
+			buffer.append(" and shiftAssign.shiftType.shiftTypeId in ("+shiftTypeId+")");
+		}
+		List<ShiftAssignedDays> empShiftDays = session.createQuery(buffer.toString()).list();
+		boolean noRecord = false;
+		if(!shiftTypeId.equalsIgnoreCase("-1")) {
+			if(empShiftDays.isEmpty()) {
+				noRecord = true;
+			}
+		}
+		MultiMap shiftAssignedMap = new MultiHashMap();
+		StringBuffer empSet = new StringBuffer();
+		for(ShiftAssignedDays obj : empShiftDays) {
+			Integer empId = obj.getEmployee().getEmpId();
+			shiftAssignedMap.put(empId, obj);
+			if(!shiftTypeId.equalsIgnoreCase("-1")) {	
+				if(!empSet.toString().contains(empId+"")) {						
+					empSet.append(empId+",");
+				}
+			}
+		}
+		String empFilter = "";
+		if(empSet.length() != 0) {				
+			empFilter = empSet.toString();
+			empFilter = empFilter.substring(0, empFilter.length() - 1);
+		}
+		buffer.delete(0, buffer.length());
+		buffer.append(" from LeaveApplication where unit.unitId = "+unitId+" and statusMain.statusId in ("+StatusMap.APPROVED+","+StatusMap.AVAILED+")");
+		List<LeaveApplication> leaveApplicationList = session.createQuery(buffer.toString()).list();
+		MultiMap leaveApplicationMap = new MultiHashMap();
+		for(LeaveApplication obj : leaveApplicationList) {
+			Integer empId = obj.getEmployee().getEmpId();
+			LeaveType leaveType = obj.getLeaveType();
+			Date leaveFrom = obj.getFromDate();
+			Date leaveTo = obj.getToDate();
+			leaveApplicationMap.put(empId, leaveType.getName()+"##"+sdf.format(leaveFrom)+"##"+sdf.format(leaveTo));
+		}
+		buffer.delete(0, buffer.length());
+		buffer.append(" from ShiftType where unit.unitId = "+unitId+" and statusMain.statusId in ("+StatusMap.ACTIVE+","+StatusMap.Dynamic_Shift+")");
+		List<ShiftType> shifts = session.createQuery(buffer.toString()).list();
+		Map<Integer, ShiftType> shiftMap = new HashMap<Integer, ShiftType>();
+		for(ShiftType shift : shifts) {
+			shiftMap.put(shift.getShiftTypeId(), shift);
+		}
+		buffer.delete(0, buffer.length());
+		if(departmentId.equalsIgnoreCase("-1")) {
+			buffer.append(" from Employee where statusMain.statusId in (1,9) and unit.unitId = "+unitId+" ");
+			if(!search.isEmpty()) {
+				String[] searchValues = search.split(" ");
+				if(searchValues.length == 1 || searchValues.length >= 3) {						
+					buffer.append(" and ( firstName like '%"+search+"%' or lastName like '%"+search+"%' or empCode like '%"+search+"%' )");
+				} else {
+					buffer.append(" and firstName like '%"+searchValues[0]+"%' and lastName like '%"+searchValues[1]+"%'");
+				}
+			}
+			if(!shiftTypeId.equalsIgnoreCase("-1")) {					
+				if(!empFilter.isEmpty()) {
+					buffer.append(" and empId in ("+empFilter+")");
+				}
+			}
+			buffer.append("order by concat(firstName,' ',lastName)");
+		} else {				
+			buffer.append("select e.employeeByEmpId from EmpJobHistory e where e.employeeByEmpId.statusMain.statusId in (1,9) and e.employeeByEmpId.unit.unitId = "+unitId+" and e.statusMain.statusId = 1 and e.department.departmentId in ("+departmentId+") ");
+			if(!search.isEmpty()) {
+				String[] searchValues = search.split(" ");
+				if(searchValues.length == 1 || searchValues.length >= 3) {						
+					buffer.append(" and ( e.employeeByEmpId.firstName like '%"+search+"%' or e.employeeByEmpId.lastName like '%"+search+"%' or e.employeeByEmpId.empCode like '%"+search+"%' )");
+				} else {
+					buffer.append(" and e.employeeByEmpId.firstName like '%"+searchValues[0]+"%' and e.employeeByEmpId.lastName like '%"+searchValues[1]+"%'");
+				}
+			}
+			if(!shiftTypeId.equalsIgnoreCase("-1")) {					
+				if(!empFilter.isEmpty()) {
+					buffer.append(" and empId in ("+empFilter+")");
+				}
+			}
+			buffer.append("order by concat(e.employeeByEmpId.firstName,' ',e.employeeByEmpId.lastName)");
+		}
+		Query query = session.createQuery(buffer.toString());
+		employees = query.list();
+		int totalAfterFilter = employees.size();
+		employees = query.setFirstResult(start).setMaxResults(amount).list();
+		int totalDisplayRecords = employees.size();
+		if(!shiftTypeId.equalsIgnoreCase("-1")) {
+			if(noRecord) {
+				employees = new ArrayList<Employee>();
+				totalAfterFilter = employees.size();
+				totalDisplayRecords = employees.size();
+			}
+		}
+		buffer.delete(0, buffer.length());
+		for(Employee emp : employees) {
+			int count = 0;
+			buffer.delete(0, buffer.length());
+			JSONObject json = new JSONObject();
+			Integer empId = emp.getEmpId();
+			String empFullName = emp.getFirstName()+" "+emp.getLastName();
+			String empName = "<div class='row' style='text-align:center'>"+emp.getFirstName()+" "+emp.getLastName()+" [ "+emp.getEmpCode()+" ]"+"</div>";
+			json.put(""+count, empName);
+			List<ShiftAssignedDays> shiftList = (List<ShiftAssignedDays>) shiftAssignedMap.get(empId);
+			List<String> leaves = (List<String>) leaveApplicationMap.get(empId);
+			for(Date date : dates) {
+				buffer.delete(0, buffer.length());
+				count++;
+				boolean timeOffFlag = false;
+				boolean shiftAssignFlag = false;
+				Integer onBehalfEmpId = 0;
+				cal.setTime(date);
+				Set<Integer> shiftTypeList = new HashSet<Integer>();
+				Set<Integer> shiftTypeDraftList = new HashSet<Integer>();
+				Map<Integer, String> locationMap = new HashMap<Integer, String>();
+				Map<Integer, Integer> onBehalfEmpMap = new HashMap<Integer, Integer>();
+				String attendingEmpName = null;
+				List<ShiftAssignedDays> assignedList = session.createQuery(" from ShiftAssignedDays where shiftAssign.unit.unitId = "+unitId+" and assignedShiftStatus.statusId in (23,3) and onBehalfOfEmpId="+empId+" and onBehalfOfFlag = 'true' and shiftDate = '"+sdf.format(date)+"'").list();
+				if(!assignedList.isEmpty()) {
+					for(ShiftAssignedDays obj : assignedList) {
+						Integer attendingEmp = obj.getEmployee().getEmpId();
+						Employee e = (Employee)session.get(Employee.class, attendingEmp);
+						attendingEmpName =  e.getFirstName()+" "+e.getLastName();
+					}
+				}
+				if(shiftList != null) {
+					for(ShiftAssignedDays shift : shiftList) {
+						Integer shiftId = shift.getShiftAssign().getShiftType().getShiftTypeId();
+						Date shiftDate = sdf.parse(sdf.format(shift.getShiftDate()));
+						Integer statusId = shift.getAssignedShiftStatus().getStatusId();
+						Set<ShiftAssignedJobLocation> location = shift.getShiftAssignedJobLocation();
+						onBehalfEmpId = shift.getOnBehalfOfEmpId();
+						if(date.compareTo(shiftDate) == 0) {
+							String jobLocationName = "";
+							if(location.size() != 0) {
+								for(ShiftAssignedJobLocation jobLocation : location) {
+									if(jobLocationName.isEmpty()) {
+										jobLocationName = jobLocation.getJobsiteLocation().getName();
+									} else {											
+										jobLocationName = jobLocationName+","+jobLocation.getJobsiteLocation().getName();
+									}
+								}
+								locationMap.put(shiftId, jobLocationName);
+							}
+							if(onBehalfEmpId != null) {									
+								onBehalfEmpMap.put(shiftId, onBehalfEmpId);
+							}
+							if(statusId == 3) {
+								shiftTypeDraftList.add(shiftId);
+							} else {									
+								shiftTypeList.add(shiftId);
+							}
+							shiftAssignFlag = true;
+						}
+					}
+				}
+				List<String> selectedLeaves = new ArrayList<String>();
+				if(leaves != null) {
+					for(String leave : leaves) {
+						String leaveName = leave.split("\\##")[0];
+						Date leaveFrom = sdf.parse(leave.split("\\##")[1]);
+						Date leaveTo = sdf.parse(leave.split("\\##")[2]);
+						if(leaveFrom.compareTo(date) * date.compareTo(leaveTo) >= 0) {
+							selectedLeaves.add(leaveName);
+							timeOffFlag = true;
+						}
+					}
+				}
+				if(timeOffFlag) {
+					buffer.delete(0, buffer.length());
+					buffer.append("<div style='text-align: center;'>");
+					for(String leaveName : selectedLeaves) {
+						buffer.append("<span title='"+leaveName+"'>"+leaveName+"</span><br />");
+					}
+					buffer.append("</div>");
+					json.put(""+count, buffer.toString());
+				} else if(shiftAssignFlag) {
+					buffer.delete(0, buffer.length());
+					if(!shiftTypeDraftList.isEmpty() && !shiftTypeList.isEmpty()) {
+						for(Integer shiftId : shiftTypeDraftList) {
+							String locationName = locationMap.get(shiftId);
+							String location = "";
+							if(locationName != null) {
+								if(!locationName.trim().isEmpty()) {											
+									locationName = "Location : "+locationName;
+									location = "<a style='color: red;' data-toggle='tooltip' data-html='true' title = '' data-original-title='"+locationName+"'><i class='fa fa-map-marker'></i></a>";
+								}
+							}
+							ShiftType shiftType = shiftMap.get(shiftId);
+							String colorCode = shiftType.getColorCode() == null ? "#FFFFF" : shiftType.getColorCode();
+							long shiftFrom = shiftType.getShiftFrom().getTime();
+							long shiftTo = shiftType.getShiftTo().getTime();
+							if(shiftTo < shiftFrom) {
+								shiftTo = shiftType.getShiftTo().getTime() + (24 * 60 * 60 * 1000);
+							}
+							long timeDifference = shiftTo - shiftFrom;
+							long diffHours = timeDifference / (60 * 60 * 1000) % 24;
+							long diffMinutes = timeDifference / (60 * 1000) % 60;
+							String totalHrs = "";
+							if(diffHours != 0) {					
+								if (diffMinutes < 10 && diffHours < 10)
+									totalHrs = "0" + diffHours + ":0" + diffMinutes;
+								else if (diffMinutes < 10)
+									totalHrs = diffHours + ":0" + diffMinutes;
+								else if (diffHours < 10)
+									totalHrs = "0" + diffHours + ":" + diffMinutes;
+								else
+									totalHrs = diffHours + ":" + diffMinutes;
+							} else {
+								if(diffMinutes !=0) {
+									totalHrs = "24:" + diffMinutes;
+								} else {
+									totalHrs = "24:00";
+								}
+							}
+							Integer onBehalfEmployeeId = onBehalfEmpMap.get(shiftId);
+							String onBehalfMessage = "";
+							if(onBehalfEmployeeId != null) {
+								Employee onBehalfEmployee = new EmployeeDAO().findById(onBehalfEmployeeId);
+								onBehalfMessage = "'This shift is assigned on behalf of "+onBehalfEmployee.getFirstName()+" "+onBehalfEmployee.getLastName()+" [ "+onBehalfEmployee.getEmpCode()+" ]'";
+							}
+							buffer.append("<div class='row' style='margin-left : 20px !important;border-style: solid;border-color: "+colorCode+"'>");
+							if(shiftType.getStatusMain().getStatusId() == 83 && shiftType.getName().isEmpty()) {
+								if(onBehalfMessage.isEmpty() && attendingEmpName == null) {
+									onBehalfMessage = "'"+sHoursFormat.format(shiftType.getShiftFrom())+" to "+sHoursFormat.format(shiftType.getShiftTo())+"  ("+totalHrs+" hours)'";
+								} else if(attendingEmpName != null) {
+									onBehalfMessage = "'"+empFullName+"`s shift has been assigned to "+attendingEmpName+"'";
+								}
+								buffer.append("<a style='color: #000000!important;' data-toggle='tooltip' data-html='true' title = '' data-original-title="+onBehalfMessage+">"+sHoursFormat.format(shiftType.getShiftFrom())+" - "+sHoursFormat.format(shiftType.getShiftTo())+" ("+totalHrs+" hours)</a>&nbsp;"+location+"");
+							}else {
+								if(onBehalfMessage.isEmpty() && attendingEmpName == null) {
+									onBehalfMessage = "'"+shiftType.getName()+" from "+sHoursFormat.format(shiftType.getShiftFrom())+" to "+sHoursFormat.format(shiftType.getShiftTo())+"  ("+totalHrs+" hours)'";
+								} else if(attendingEmpName != null) {
+									onBehalfMessage = "'"+empFullName+"`s shift has been assigned to "+attendingEmpName+"'";
+								}
+								buffer.append("<a style='color: #000000!important;' data-toggle='tooltip' data-html='true' title = '' data-original-title="+onBehalfMessage+">"+sHoursFormat.format(shiftType.getShiftFrom())+" - "+sHoursFormat.format(shiftType.getShiftTo())+" ("+totalHrs+" hours)</a>&nbsp;"+location+"");
+							}
+							buffer.append("</div>");
+							for(Integer assignedShiftId : shiftTypeList) {
+								String shiftLocationName = locationMap.get(assignedShiftId);
+								String shiftLocation = "";
+								if(shiftLocationName != null) {
+									if(!shiftLocationName.trim().isEmpty()) {
+										shiftLocationName = "Location : "+shiftLocationName;
+										shiftLocation = "<a style='color: red;' data-toggle='tooltip' data-html='true' title = '' data-original-title='"+shiftLocationName+"'><i class='fa fa-map-marker'></i></a>";
+									}
+								}
+								ShiftType shiftTypeObj = shiftMap.get(assignedShiftId);
+								String shiftColorCode = shiftTypeObj.getColorCode() == null ? "#FFFFF" : shiftTypeObj.getColorCode();
+								long shiftFromTime = shiftTypeObj.getShiftFrom().getTime();
+								long shiftToTime = shiftTypeObj.getShiftTo().getTime();
+								if(shiftToTime < shiftFromTime) {
+									shiftToTime = shiftTypeObj.getShiftTo().getTime() + (24 * 60 * 60 * 1000);
+								}
+								long timeDifference1 = shiftToTime - shiftFromTime;
+								long diffHours1 = timeDifference1 / (60 * 60 * 1000) % 24;
+								long diffMinutes1 = timeDifference1 / (60 * 1000) % 60;
+								String totalHrs1 = "";
+								if(diffHours1 != 0) {					
+									if (diffMinutes1 < 10 && diffHours1 < 10)
+										totalHrs1 = "0" + diffHours1 + ":0" + diffMinutes1;
+									else if (diffMinutes1 < 10)
+										totalHrs1 = diffHours1 + ":0" + diffMinutes1;
+									else if (diffHours1 < 10)
+										totalHrs1 = "0" + diffHours1 + ":" + diffMinutes1;
+									else
+										totalHrs1 = diffHours1 + ":" + diffMinutes1;
+								} else {
+									if(diffMinutes1 !=0) {
+										totalHrs1 = "24:" + diffMinutes1;
+									} else {
+										totalHrs1 = "24:00";
+									}
+								}
+								onBehalfEmployeeId = onBehalfEmpMap.get(shiftId);
+								onBehalfMessage = "";
+								if(onBehalfEmployeeId != null) {
+									Employee onBehalfEmployee = new EmployeeDAO().findById(onBehalfEmployeeId);
+									onBehalfMessage = "'This shift is assigned on behalf of "+onBehalfEmployee.getFirstName()+" "+onBehalfEmployee.getLastName()+" [ "+onBehalfEmployee.getEmpCode()+" ]'";
+								}
+								buffer.append("<div class='row' style='margin-left : 20px !important'>");
+								if(shiftTypeObj.getStatusMain().getStatusId() == 83 && shiftTypeObj.getName().isEmpty()) {
+									if(onBehalfMessage.isEmpty() && attendingEmpName == null) {
+										onBehalfMessage = "'"+sHoursFormat.format(shiftTypeObj.getShiftFrom())+" to "+sHoursFormat.format(shiftTypeObj.getShiftTo())+"  ("+totalHrs1+" hours)'";
+									} else if(attendingEmpName != null) {
+										onBehalfMessage = "'"+empFullName+"`s shift has been assigned to "+attendingEmpName+"'";
+									}
+									buffer.append("<a style='color: #000000!important;' data-toggle='tooltip' data-html='true' title = '' data-original-title="+onBehalfMessage+"><span style='float: left !important;background: "+shiftColorCode+";padding: 3px;width: 10px;height: 10px;margin-right: 8px;margin-top: 4px;'></span>"+sHoursFormat.format(shiftTypeObj.getShiftFrom())+" - "+sHoursFormat.format(shiftTypeObj.getShiftTo())+" ("+totalHrs1+" hours)</a>&nbsp;"+shiftLocation+"");
+								}else {
+									if(onBehalfMessage.isEmpty() && attendingEmpName == null) {
+										onBehalfMessage = "'"+shiftTypeObj.getName()+" from "+sHoursFormat.format(shiftTypeObj.getShiftFrom())+" to "+sHoursFormat.format(shiftTypeObj.getShiftTo())+"  ("+totalHrs1+" hours)'";
+									} else if(attendingEmpName != null) {
+										onBehalfMessage = "'"+empFullName+"`s shift has been assigned to "+attendingEmpName+"'";
+									}
+									buffer.append("<a style='color: #000000!important;' data-toggle='tooltip' data-html='true' title = '' data-original-title="+onBehalfMessage+"><span style='float: left !important;background: "+shiftColorCode+";padding: 3px;width: 10px;height: 10px;margin-right: 8px;margin-top: 4px;'></span>"+sHoursFormat.format(shiftTypeObj.getShiftFrom())+" - "+sHoursFormat.format(shiftTypeObj.getShiftTo())+" ("+totalHrs1+" hours)</a>&nbsp;"+shiftLocation+"");
+								}
+								buffer.append("</div>");
+							}
+						}
+					} else if(!shiftTypeDraftList.isEmpty()) {
+						for(Integer shiftId : shiftTypeDraftList) {
+							String locationName = locationMap.get(shiftId);
+							String location = "";
+							if(locationName != null) {
+								if(!locationName.trim().isEmpty()) {											
+									locationName = "Location : "+locationName;
+									location = "<a style='color: red;' data-toggle='tooltip' data-html='true' title = '' data-original-title='"+locationName+"'><i class='fa fa-map-marker'></i></a>";
+								}
+							}
+							ShiftType shiftType = shiftMap.get(shiftId);
+							String colorCode = shiftType.getColorCode() == null ? "#FFFFF" : shiftType.getColorCode();
+							long shiftFrom = shiftType.getShiftFrom().getTime();
+							long shiftTo = shiftType.getShiftTo().getTime();
+							if(shiftTo < shiftFrom) {
+								shiftTo = shiftType.getShiftTo().getTime() + (24 * 60 * 60 * 1000);
+							}
+							long timeDifference = shiftTo - shiftFrom;
+							long diffHours = timeDifference / (60 * 60 * 1000) % 24;
+							long diffMinutes = timeDifference / (60 * 1000) % 60;
+							String totalHrs = "";
+							if(diffHours != 0) {					
+								if (diffMinutes < 10 && diffHours < 10)
+									totalHrs = "0" + diffHours + ":0" + diffMinutes;
+								else if (diffMinutes < 10)
+									totalHrs = diffHours + ":0" + diffMinutes;
+								else if (diffHours < 10)
+									totalHrs = "0" + diffHours + ":" + diffMinutes;
+								else
+									totalHrs = diffHours + ":" + diffMinutes;
+							} else {
+								if(diffMinutes !=0) {
+									totalHrs = "24:" + diffMinutes;
+								} else {
+									totalHrs = "24:00";
+								}
+							}
+							Integer onBehalfEmployeeId = onBehalfEmpMap.get(shiftId);
+							String onBehalfMessage = "";
+							if(onBehalfEmployeeId != null) {
+								Employee onBehalfEmployee = new EmployeeDAO().findById(onBehalfEmployeeId);
+								onBehalfMessage = "'This shift is assigned on behalf of "+onBehalfEmployee.getFirstName()+" "+onBehalfEmployee.getLastName()+" [ "+onBehalfEmployee.getEmpCode()+" ]'";
+							}
+							buffer.append("<div class='row' style='margin-left : 20px !important;border-style: solid;border-color: "+colorCode+"'>");
+							if(shiftType.getStatusMain().getStatusId() == 83 && shiftType.getName().isEmpty()) {
+								if(onBehalfMessage.isEmpty() && attendingEmpName == null) {
+									onBehalfMessage = "'"+sHoursFormat.format(shiftType.getShiftFrom())+" to "+sHoursFormat.format(shiftType.getShiftTo())+"  ("+totalHrs+" hours)'";
+								} else if(attendingEmpName != null) {
+									onBehalfMessage = "'"+empFullName+"`s shift has been assigned to "+attendingEmpName+"'";
+								}
+								buffer.append("<a style='color: #000000!important;' data-toggle='tooltip' data-html='true' title = '' data-original-title="+onBehalfMessage+">"+sHoursFormat.format(shiftType.getShiftFrom())+" - "+sHoursFormat.format(shiftType.getShiftTo())+" ("+totalHrs+" hours)</a>&nbsp;"+location+"");
+							}else {
+								if(onBehalfMessage.isEmpty() && attendingEmpName == null) {
+									onBehalfMessage = "'"+shiftType.getName()+" from "+sHoursFormat.format(shiftType.getShiftFrom())+" to "+sHoursFormat.format(shiftType.getShiftTo())+"  ("+totalHrs+" hours)'";
+								} else if(attendingEmpName != null) {
+									onBehalfMessage = "'"+empFullName+"`s shift has been assigned to "+attendingEmpName+"'";
+								}
+								buffer.append("<a style='color: #000000!important;' data-toggle='tooltip' data-html='true' title = '' data-original-title="+onBehalfMessage+">"+sHoursFormat.format(shiftType.getShiftFrom())+" - "+sHoursFormat.format(shiftType.getShiftTo())+" ("+totalHrs+" hours)</a>&nbsp;"+location+"");
+							}
+							buffer.append("</div>");
+						}
+					} else {	
+						for(Integer shiftId : shiftTypeList) {
+							String locationName = locationMap.get(shiftId);
+							String location = "";
+							if(locationName != null) {
+								if(!locationName.trim().isEmpty()) {
+									locationName = "Location : "+locationName;
+									location = "<a style='color: red;' data-toggle='tooltip' data-html='true' title = '' data-original-title='"+locationName+"'><i class='fa fa-map-marker'></i></a>";
+								}
+							}
+							ShiftType shiftType = shiftMap.get(shiftId);
+							String colorCode = shiftType.getColorCode() == null ? "#FFFFF" : shiftType.getColorCode();
+							long shiftFrom = shiftType.getShiftFrom().getTime();
+							long shiftTo = shiftType.getShiftTo().getTime();
+							if(shiftTo < shiftFrom) {
+								shiftTo = shiftType.getShiftTo().getTime() + (24 * 60 * 60 * 1000);
+							}
+							long timeDifference = shiftTo - shiftFrom;
+							long diffHours = timeDifference / (60 * 60 * 1000) % 24;
+							long diffMinutes = timeDifference / (60 * 1000) % 60;
+							String totalHrs = "";
+							if(diffHours != 0) {					
+								if (diffMinutes < 10 && diffHours < 10)
+									totalHrs = "0" + diffHours + ":0" + diffMinutes;
+								else if (diffMinutes < 10)
+									totalHrs = diffHours + ":0" + diffMinutes;
+								else if (diffHours < 10)
+									totalHrs = "0" + diffHours + ":" + diffMinutes;
+								else
+									totalHrs = diffHours + ":" + diffMinutes;
+							} else {
+								if(diffMinutes !=0) {
+									totalHrs = "24:" + diffMinutes;
+								} else {
+									totalHrs = "24:00";
+								}
+							}
+							Integer onBehalfEmployeeId = onBehalfEmpMap.get(shiftId);
+							String onBehalfMessage = "";
+							if(onBehalfEmployeeId != null) {
+								Employee onBehalfEmployee = new EmployeeDAO().findById(onBehalfEmployeeId);
+								onBehalfMessage = "'This shift is assigned on behalf of "+onBehalfEmployee.getFirstName()+" "+onBehalfEmployee.getLastName()+" [ "+onBehalfEmployee.getEmpCode()+" ]'";
+							}
+							buffer.append("<div class='row' style='margin-left : 20px !important'>");
+							if(shiftType.getStatusMain().getStatusId() == 83 && shiftType.getName().isEmpty()) {
+								if(onBehalfMessage.isEmpty() && attendingEmpName == null) {
+									onBehalfMessage = "'"+sHoursFormat.format(shiftType.getShiftFrom())+" to "+sHoursFormat.format(shiftType.getShiftTo())+"  ("+totalHrs+" hours)'";
+								} else if(attendingEmpName != null) {
+									onBehalfMessage = "'"+empFullName+"`s shift has been assigned to "+attendingEmpName+"'";
+								}
+								buffer.append("<a style='color: #000000!important;' data-toggle='tooltip' data-html='true' title = '' data-original-title="+onBehalfMessage+"><span style='float: left !important;background: "+colorCode+";padding: 3px;width: 10px;height: 10px;margin-right: 8px;margin-top: 4px;'></span>"+sHoursFormat.format(shiftType.getShiftFrom())+" - "+sHoursFormat.format(shiftType.getShiftTo())+" ("+totalHrs+" hours)</a>&nbsp;"+location+"");
+							}else {
+								if(onBehalfMessage.isEmpty() && attendingEmpName == null) {
+									onBehalfMessage = "'"+shiftType.getName()+" from "+sHoursFormat.format(shiftType.getShiftFrom())+" to "+sHoursFormat.format(shiftType.getShiftTo())+"  ("+totalHrs+" hours)'";
+								} else if(attendingEmpName != null) {
+									onBehalfMessage = "'"+empFullName+"`s shift has been assigned to "+attendingEmpName+"'";
+								}
+								buffer.append("<a style='color: #000000!important;' data-toggle='tooltip' data-html='true' title = '' data-original-title="+onBehalfMessage+"><span style='float: left !important;background: "+colorCode+";padding: 3px;width: 10px;height: 10px;margin-right: 8px;margin-top: 4px;'></span>"+sHoursFormat.format(shiftType.getShiftFrom())+" - "+sHoursFormat.format(shiftType.getShiftTo())+" ("+totalHrs+" hours)</a>&nbsp;"+location+"");
+							}
+							buffer.append("</div>");
+						}
+					}
+					json.put(""+count, buffer.toString());
+				} else {
+					json.put(""+count, "&nbsp;");
+				}
+			}
+			array.put(json);
+		}
+		result.put("draw", draw);
+		result.put("data", array);
+		result.put("recordsTotal", totalDisplayRecords);
+		result.put("recordsFiltered", totalAfterFilter);
+	} catch(Exception e) {
+		logger.error(e);
+	} finally {
+		session.flush();
+		session.close();
+	}
+	logger.info("End of getEmployeeShiftCalendarRecords()");
+	return result;
+}
